@@ -65,7 +65,28 @@ git push
 7. Runs the **postagent** hook (verification). On failure, retries Claude once.
 8. Commits and pushes, then opens a pull request linked to the issue.
 
-The model can be selected per-issue by including `**Model:** haiku`, `**Model:** sonnet`, or `**Model:** opus` in the issue body. Opus is capped at sonnet unless the runner has `ALLOW_OPUS=true` set.
+#### Issue parameters
+
+The issue body is scanned for optional control parameters in bold key-value format:
+
+| Parameter | Values | Default | Notes |
+|---|---|---|---|
+| `**Model:**` | `haiku` \| `sonnet` \| `opus` | `sonnet` | `opus` is capped at `sonnet` unless the runner has `ALLOW_OPUS=true` set |
+| `**Max turns:**` | any positive integer | `15` | Maximum number of Claude agentic turns for the main run; the verification retry is always capped at 10 |
+
+#### Example issue body
+
+```
+Implement a rate-limiting middleware for the API endpoints.
+
+All routes under `/api/` should be limited to 100 requests per minute per IP.
+Return HTTP 429 when the limit is exceeded. Use Redis for the counter.
+
+**Model:** sonnet
+**Max turns:** 20
+```
+
+Parameters are optional — an issue with plain prose and no parameters works fine.
 
 ### Review Submit
 
