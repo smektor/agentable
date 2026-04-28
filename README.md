@@ -131,6 +131,18 @@ If no postagent hook script is found **and** a file called `verify.sh` exists at
 
 ---
 
+## Internal scripts
+
+Three helper scripts in `scripts/` are sourced by both `doit.sh` and `submit.sh` at startup. You do not need to modify them; customise behaviour through the `agentable_scripts/` hooks instead.
+
+| File | Purpose |
+|---|---|
+| `scripts/logging.sh` | Sets `SCRIPT_DIR`, `LOG_FILE`, `VERIFY_SCRIPT`; defines `log()` |
+| `scripts/hooks.sh` | Defines `resolve_hook()` for locating `agentable_scripts/` hook files |
+| `scripts/run_verify.sh` | Defines `_run_verify()` — runs postagent hook, or falls back to legacy `verify.sh` |
+
+---
+
 ## Logs
 
 Each run appends to a dated log file at `agentable/scripts/logs/YYYY-MM-DD.log` on the runner. The file is written locally and is **not** committed to your repository.
@@ -147,6 +159,9 @@ your-repo/
 │       └── review.yml        ← copied by sync.sh
 ├── agentable/                ← this submodule
 │   ├── scripts/
+│   │   ├── logging.sh        ← log setup + log()
+│   │   ├── hooks.sh          ← resolve_hook()
+│   │   ├── run_verify.sh     ← _run_verify()
 │   │   ├── issues/
 │   │   │   ├── doit.sh
 │   │   │   └── prompt.md

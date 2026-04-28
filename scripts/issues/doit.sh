@@ -5,27 +5,12 @@ ISSUE_NUMBER=$1
 REPO=$2
 BRANCH="ai/issue-${ISSUE_NUMBER}-$(openssl rand -hex 4)"
 
-# Logging setup
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG_DIR="${SCRIPT_DIR}/../logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="${LOG_DIR}/$(date +%Y-%m-%d).log"
-VERIFY_SCRIPT="${SCRIPT_DIR}/../verify.sh"
-
-log() {
-  echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG_FILE"
-}
-
-# Resolve the most-specific available hook script.
-# Usage: resolve_hook <specific_path> <general_path>
-# Prints the path of the found script, or nothing if neither exists.
-resolve_hook() {
-  if [ -f "$1" ]; then
-    echo "$1"
-  elif [ -f "$2" ]; then
-    echo "$2"
-  fi
-}
+# shellcheck source=../logging.sh
+source "$(cd "$(dirname "$0")" && pwd)/../logging.sh"
+# shellcheck source=../hooks.sh
+source "$(cd "$(dirname "$0")" && pwd)/../hooks.sh"
+# shellcheck source=../run_verify.sh
+source "$(cd "$(dirname "$0")" && pwd)/../run_verify.sh"
 
 log "=== Run started: issue #${ISSUE_NUMBER} repo=${REPO} branch=${BRANCH} ==="
 
@@ -106,24 +91,6 @@ fi
 log "[5/7] Verifying..."
 POSTAGENT=$(resolve_hook "${REPO_DIR}/agentable_scripts/doit_postagent.sh" "${REPO_DIR}/agentable_scripts/postagent.sh")
 VERIFY_LOG=$(mktemp)
-
-# Run verification: postagent hook takes precedence over legacy verify.sh.
-_run_verify() {
-  truncate -s 0 "$VERIFY_LOG"
-  if [ -n "$POSTAGENT" ]; then
-    log "Running postagent hook: $(basename $POSTAGENT)..."
-    set +e
-    bash "$POSTAGENT" > "$VERIFY_LOG" 2>&1
-    VERIFY_EXIT=$?
-    set -e
-    cat "$VERIFY_LOG" | tee -a "$LOG_FILE"
-  elif [ -f "$VERIFY_SCRIPT" ]; then
-    source "$VERIFY_SCRIPT"
-    VERIFY_EXIT=$((LINT_EXIT + TYPE_EXIT + TEST_EXIT))
-  else
-    VERIFY_EXIT=0
-  fi
-}
 
 _run_verify
 log "Verification results — exit=${VERIFY_EXIT}"
