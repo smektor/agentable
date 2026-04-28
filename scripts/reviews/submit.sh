@@ -15,6 +15,17 @@ log() {
   echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG_FILE"
 }
 
+# Resolve the most-specific available hook script.
+# Usage: resolve_hook <specific_path> <general_path>
+# Prints the path of the found script, or nothing if neither exists.
+resolve_hook() {
+  if [ -f "$1" ]; then
+    echo "$1"
+  elif [ -f "$2" ]; then
+    echo "$2"
+  fi
+}
+
 log "=== Run started: PR #${PR_NUMBER} repo=${REPO} ==="
 
 log "[1/6] Reading PR #${PR_NUMBER} from ${REPO}..."
@@ -52,6 +63,13 @@ log "Checking out PR branch: ${PR_BRANCH}..."
 git checkout $PR_BRANCH
 git pull origin $PR_BRANCH
 
+# --- Preagent hook (runs before Claude; aborts on non-zero exit) ---
+PREAGENT=$(resolve_hook "${REPO_DIR}/agentable_scripts/review_preagent.sh" "${REPO_DIR}/agentable_scripts/preagent.sh")
+if [ -n "$PREAGENT" ]; then
+  log "Running preagent hook: $(basename $PREAGENT)..."
+  bash "$PREAGENT" || { log "Preagent hook failed. Aborting."; exit 1; }
+fi
+
 log "[3/6] Running Claude Code..."
 PROMPT=$(REPO="$REPO" PR_TITLE="$PR_TITLE" PR_BODY="$PR_BODY" COMMENTS="$COMMENTS" envsubst < "$(dirname "$0")/prompt.md")
 log "Model: claude-sonnet-4-6"
@@ -74,11 +92,31 @@ if echo "$CLAUDE_OUTPUT" | grep -q "^QUESTIONS:"; then
 fi
 
 log "[4/6] Verifying..."
+POSTAGENT=$(resolve_hook "${REPO_DIR}/agentable_scripts/review_postagent.sh" "${REPO_DIR}/agentable_scripts/postagent.sh")
 VERIFY_LOG=$(mktemp)
-source "$VERIFY_SCRIPT"
-log "Verification results — lint=${LINT_EXIT} type=${TYPE_EXIT} test=${TEST_EXIT}"
 
-if [ $((LINT_EXIT + TYPE_EXIT + TEST_EXIT)) -ne 0 ]; then
+# Run verification: postagent hook takes precedence over legacy verify.sh.
+_run_verify() {
+  truncate -s 0 "$VERIFY_LOG"
+  if [ -n "$POSTAGENT" ]; then
+    log "Running postagent hook: $(basename $POSTAGENT)..."
+    set +e
+    bash "$POSTAGENT" > "$VERIFY_LOG" 2>&1
+    VERIFY_EXIT=$?
+    set -e
+    cat "$VERIFY_LOG" | tee -a "$LOG_FILE"
+  elif [ -f "$VERIFY_SCRIPT" ]; then
+    source "$VERIFY_SCRIPT"
+    VERIFY_EXIT=$((LINT_EXIT + TYPE_EXIT + TEST_EXIT))
+  else
+    VERIFY_EXIT=0
+  fi
+}
+
+_run_verify
+log "Verification results — exit=${VERIFY_EXIT}"
+
+if [ "$VERIFY_EXIT" -ne 0 ]; then
   log "Verification failed. Re-invoking Claude to fix errors (1 retry)..."
   VERIFY_ERRORS=$(cat "$VERIFY_LOG")
   RETRY_PROMPT="You previously addressed review comments on PR #${PR_NUMBER} (${PR_TITLE}). The following verification errors were found. Fix only what is failing — do not make unrelated changes.
@@ -90,13 +128,8 @@ After fixing, output ONLY:
 ---PR_SUMMARY---
 <bullet points of what was changed>"
 
-  if [ $TEST_EXIT -eq 0 ]; then
-    RETRY_MODEL="claude-haiku-4-5-20251001"
-    log "Only lint/type-check failed — using haiku for retry"
-  else
-    RETRY_MODEL="claude-sonnet-4-6"
-    log "Tests failed — using sonnet for retry"
-  fi
+  RETRY_MODEL="claude-sonnet-4-6"
+  log "Using ${RETRY_MODEL} for retry"
 
   set +e
   CLAUDE_OUTPUT=$(claude --dangerously-skip-permissions --model "$RETRY_MODEL" --max-turns 10 --print "$RETRY_PROMPT" 2>&1)
@@ -110,11 +143,10 @@ After fixing, output ONLY:
     exit 1
   fi
 
-  truncate -s 0 "$VERIFY_LOG"
-  source "$VERIFY_SCRIPT"
-  log "Retry verification results — lint=${LINT_EXIT} type=${TYPE_EXIT} test=${TEST_EXIT}"
+  _run_verify
+  log "Retry verification results — exit=${VERIFY_EXIT}"
 
-  if [ $((LINT_EXIT + TYPE_EXIT + TEST_EXIT)) -ne 0 ]; then
+  if [ "$VERIFY_EXIT" -ne 0 ]; then
     log "Verification still failing after retry. Posting to PR and aborting."
     ERROR_BODY=$(printf "### Automated fix failed\n\nVerification errors after retry:\n\`\`\`\n%s\n\`\`\`\n\nManual intervention required." "$(cat "$VERIFY_LOG")")
     gh pr comment $PR_NUMBER -R $REPO --body "$ERROR_BODY"
