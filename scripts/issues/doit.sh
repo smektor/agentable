@@ -62,7 +62,7 @@ CLAUDE_OUTPUT=$(claude --dangerously-skip-permissions --model "$CLAUDE_MODEL" --
 CLAUDE_EXIT=$?
 set -e
 log "--- Claude output (exit=${CLAUDE_EXIT}) ---"
-echo "$CLAUDE_OUTPUT"
+log "$CLAUDE_OUTPUT"
 log "--- End Claude output ---"
 if [ $CLAUDE_EXIT -ne 0 ]; then
   log "Claude failed with exit code ${CLAUDE_EXIT}. Aborting."
@@ -102,7 +102,7 @@ After fixing, output ONLY:
   CLAUDE_EXIT=$?
   set -e
   log "--- Claude retry output (exit=${CLAUDE_EXIT}) ---"
-  echo "$CLAUDE_OUTPUT"
+  log "$CLAUDE_OUTPUT"
   log "--- End Claude retry output ---"
   if [ $CLAUDE_EXIT -ne 0 ]; then
     log "Claude retry failed with exit code ${CLAUDE_EXIT}. Aborting."
