@@ -21,6 +21,7 @@ done
 # 2. Create agentable_scripts/ directory without overwriting any existing scripts
 SCRIPTS_DIR="${MAIN_REPO_DIR}/agentable_scripts"
 mkdir -p "$SCRIPTS_DIR"
+touch "$SCRIPTS_DIR/.keep"
 
 echo ""
 echo "agentable_scripts/ hook status (add these to $SCRIPTS_DIR to customise behaviour):"
