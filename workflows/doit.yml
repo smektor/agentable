@@ -12,5 +12,5 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Implement issue
-        run: bash ${{ github.workspace }}/claude/scripts/issues/doit.sh ${{ github.event.issue.number }} ${{ github.repository }}
+        run: bash ${{ github.workspace }}/agentable/scripts/issues/doit.sh ${{ github.event.issue.number }} ${{ github.repository }}
 
