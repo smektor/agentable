@@ -57,8 +57,13 @@ case "${MODEL_RAW:-sonnet}" in
 esac
 log "Model: ${CLAUDE_MODEL} (requested: ${MODEL_RAW:-sonnet})"
 
+# Max turns routing: read from issue body, default 15
+MAX_TURNS_RAW=$(echo "$BODY" | grep -oP '(?<=\*\*Max turns:\*\* )\d+' | head -1)
+CLAUDE_MAX_TURNS=${MAX_TURNS_RAW:-15}
+log "Max turns: ${CLAUDE_MAX_TURNS} (requested: ${MAX_TURNS_RAW:-default})"
+
 set +e
-CLAUDE_OUTPUT=$(claude --dangerously-skip-permissions --model "$CLAUDE_MODEL" --max-turns 15 --print "$PROMPT" 2>&1)
+CLAUDE_OUTPUT=$(claude --dangerously-skip-permissions --model "$CLAUDE_MODEL" --max-turns "$CLAUDE_MAX_TURNS" --print "$PROMPT" 2>&1)
 CLAUDE_EXIT=$?
 set -e
 log "--- Claude output (exit=${CLAUDE_EXIT}) ---"
