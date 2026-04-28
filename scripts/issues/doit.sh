@@ -131,7 +131,7 @@ log "[6/7] Committing and pushing..."
 git add -A -- ':!.env'
 if git diff --cached --quiet; then
   log "No changes made by Claude. Exiting."
-  exit 1
+  exit 0
 fi
 git diff --cached --stat
 git commit -m "feat: implement issue #${ISSUE_NUMBER} - ${TITLE}"
