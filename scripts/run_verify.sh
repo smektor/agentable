@@ -1,12 +1,11 @@
 #!/bin/bash
 # run_verify.sh — defines _run_verify() for running postagent / legacy verify.sh.
 # Requires the following variables to be set by the caller:
-#   $POSTAGENT    — path to postagent hook script (may be empty)
-#   $VERIFY_LOG   — path to a temp file for capturing output
+#   $POSTAGENT     — path to postagent hook script (may be empty)
+#   $VERIFY_LOG    — path to a temp file for capturing output
 #   $VERIFY_SCRIPT — path to the legacy verify.sh (set by logging.sh)
-#   $LOG_FILE     — path to the run log (set by logging.sh)
 # Sets:
-#   $VERIFY_EXIT  — 0 on pass, non-zero on failure
+#   $VERIFY_EXIT   — 0 on pass, non-zero on failure
 
 _run_verify() {
   truncate -s 0 "$VERIFY_LOG"
@@ -16,7 +15,7 @@ _run_verify() {
     bash "$POSTAGENT" > "$VERIFY_LOG" 2>&1
     VERIFY_EXIT=$?
     set -e
-    cat "$VERIFY_LOG" | tee -a "$LOG_FILE"
+    cat "$VERIFY_LOG"
   elif [ -f "$VERIFY_SCRIPT" ]; then
     source "$VERIFY_SCRIPT"
     VERIFY_EXIT=$((LINT_EXIT + TYPE_EXIT + TEST_EXIT))

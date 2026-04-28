@@ -10,6 +10,8 @@ source "$(cd "$(dirname "$0")" && pwd)/../logging.sh"
 source "$(cd "$(dirname "$0")" && pwd)/../hooks.sh"
 # shellcheck source=../run_verify.sh
 source "$(cd "$(dirname "$0")" && pwd)/../run_verify.sh"
+# shellcheck source=../prepare_repo.sh
+source "$(cd "$(dirname "$0")" && pwd)/../prepare_repo.sh"
 
 log "=== Run started: PR #${PR_NUMBER} repo=${REPO} ==="
 
@@ -28,25 +30,12 @@ log "PR Branch: $PR_BRANCH"
 log "PR Body: $(echo "$PR_BODY" | head -c 500)$([ ${#PR_BODY} -gt 500 ] && echo '...[truncated]')"
 [ -n "$COMMENTS" ] && log "Comments: $(echo "$COMMENTS" | head -c 500)$([ ${#COMMENTS} -gt 500 ] && echo '...[truncated]')"
 
-# Clone or update repo
-REPO_NAME=$(basename $REPO)
-REPO_DIR=~/repos/$REPO_NAME
-
-log "[2/6] Preparing repository at ${REPO_DIR}..."
-if [ -d "$REPO_DIR" ]; then
-  log "Repo exists, updating..."
-  cd $REPO_DIR
-  git fetch
-else
-  log "Cloning repo..."
-  mkdir -p ~/repos
-  gh repo clone $REPO $REPO_DIR
-  cd $REPO_DIR
-fi
+log "[2/6] Preparing repository for ${REPO}..."
+prepare_repo "$REPO"
 
 log "Checking out PR branch: ${PR_BRANCH}..."
-git checkout $PR_BRANCH
-git pull origin $PR_BRANCH
+git checkout "$PR_BRANCH"
+git pull origin "$PR_BRANCH"
 
 # --- Preagent hook (runs before Claude; aborts on non-zero exit) ---
 PREAGENT=$(resolve_hook "${REPO_DIR}/agentable_scripts/review_preagent.sh" "${REPO_DIR}/agentable_scripts/preagent.sh")
@@ -63,7 +52,7 @@ CLAUDE_OUTPUT=$(claude --dangerously-skip-permissions --model "claude-sonnet-4-6
 CLAUDE_EXIT=$?
 set -e
 log "--- Claude output (exit=${CLAUDE_EXIT}) ---"
-echo "$CLAUDE_OUTPUT" | tee -a "$LOG_FILE"
+echo "$CLAUDE_OUTPUT"
 log "--- End Claude output ---"
 if [ $CLAUDE_EXIT -ne 0 ]; then
   log "Claude failed with exit code ${CLAUDE_EXIT}. Aborting."
@@ -103,7 +92,7 @@ After fixing, output ONLY:
   CLAUDE_EXIT=$?
   set -e
   log "--- Claude retry output (exit=${CLAUDE_EXIT}) ---"
-  echo "$CLAUDE_OUTPUT" | tee -a "$LOG_FILE"
+  echo "$CLAUDE_OUTPUT"
   log "--- End Claude retry output ---"
   if [ $CLAUDE_EXIT -ne 0 ]; then
     log "Claude retry failed with exit code ${CLAUDE_EXIT}. Aborting."
@@ -129,7 +118,7 @@ if git diff --cached --quiet; then
   log "No changes made by Claude. Exiting."
   exit 0
 fi
-git diff --cached --stat | tee -a "$LOG_FILE"
+git diff --cached --stat
 git commit -m "feat: address review comments on PR #${PR_NUMBER}"
 git push origin $PR_BRANCH
 

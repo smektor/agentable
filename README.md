@@ -137,15 +137,10 @@ Three helper scripts in `scripts/` are sourced by both `doit.sh` and `submit.sh`
 
 | File | Purpose |
 |---|---|
-| `scripts/logging.sh` | Sets `SCRIPT_DIR`, `LOG_FILE`, `VERIFY_SCRIPT`; defines `log()` |
+| `scripts/logging.sh` | Sets `SCRIPT_DIR`, `VERIFY_SCRIPT`; defines `log()` |
 | `scripts/hooks.sh` | Defines `resolve_hook()` for locating `agentable_scripts/` hook files |
 | `scripts/run_verify.sh` | Defines `_run_verify()` — runs postagent hook, or falls back to legacy `verify.sh` |
-
----
-
-## Logs
-
-Each run appends to a dated log file at `agentable/scripts/logs/YYYY-MM-DD.log` on the runner. The file is written locally and is **not** committed to your repository.
+| `scripts/prepare_repo.sh` | Defines `prepare_repo()` — clones or fetches the target repo, sets `REPO_DIR` |
 
 ---
 
@@ -162,6 +157,7 @@ your-repo/
 │   │   ├── logging.sh        ← log setup + log()
 │   │   ├── hooks.sh          ← resolve_hook()
 │   │   ├── run_verify.sh     ← _run_verify()
+│   │   ├── prepare_repo.sh   ← prepare_repo()
 │   │   ├── issues/
 │   │   │   ├── doit.sh
 │   │   │   └── prompt.md
