@@ -1,0 +1,16 @@
+name: Do It
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  implement:
+    if: github.event.label.name == 'doit'
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Implement issue
+        run: bash ${{ github.workspace }}/claude/scripts/issues/doit.sh ${{ github.event.issue.number }} ${{ github.repository }}
+
